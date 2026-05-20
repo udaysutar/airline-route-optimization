@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Airline Route Optimizer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 420px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+            height: 50%;
+        }
+        
+        .charts-container {
+            height: 50%;
+            background: white;
+            padding: 15px;
+            overflow-y: auto;
+            border-top: 1px solid #ddd;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .chart-box {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 12px;
+            position: relative;
+        }
+        
+        .chart-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        h1 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .route-section {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .route-step {
+            margin-bottom: 12px;
+        }
+        
+        .step-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #0066cc;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .intermediates-list {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .intermediate-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            background: #f0f8ff;
+        }
+        
+        .intermediate-item:last-child {
+            border-bottom: none;
+        }
+        
+        .intermediate-code {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .remove-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .remove-btn:hover {
+            background: #ff5252;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #0066cc;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0052a3;
+        }
+        
+        .btn-secondary {
+            background: #4CAF50;
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-secondary:hover {
+            background: #45a049;
+        }
+        
+        .btn-reset {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .btn-reset:hover {
+            background: #ff5252;
+        }
+        
+        .info-box {
+            background: #f0f8ff;
+            border: 1px solid #b0e0e6;
+            border-radius: 4px;
+            padding: 12px;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 12px;
+        }
+        
+        .info-label {
+            color: #666;
+        }
+        
+        .info-value {
+            font-weight: 600;
+            color: #0066cc;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        th {
+            background: #f0f0f0;
+            padding: 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tr:hover {
+            background: #f9f9f9;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #0066cc;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #ffe6e6;
+            border: 1px solid #ffcccc;
+            color: #cc0000;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 15px;
+            color: #999;
+            font-size: 12px;
+        }
+        
+        .airport-name {
+            font-size: 11px;
+            color: #999;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>✈ Airline Route Optimizer</h1>
+            
+            <div id="errorMsg" class="error" style="display:none;"></div>
+            
+            <div class="section">
+                <div class="section-title">Optimization</div>
+                <select id="optimization">
+                    <option value="profit">📊 Maximize Profit</option>
+                    <option value="distance">📍 Shortest Distance</option>
+                </select>
+            </div>
+            
+            <div class="route-section">
+                <div class="route-step">
+                    <div class="step-label">🚀 Select Source</div>
+                    <select id="sourceAirport">
+                        <option value="">-- Choose Source Airport --</option>
+                        {% for code in codes %}
+                        <option value="{{ code }}">{{ code }}</option>
+                        {% endfor %}
+                    </select>
+                    <div id="sourceName" class="airport-name"></div>
+                </div>
+                
+                <div class="route-step">
+                    <div class="step-label">✈ Add Intermediate Stops</div>
+                    <select id="intermediateAirport">
+                        <option value="">-- Add Intermediate Airport --</option>
+                        {% for code in codes %}
+                        <option value="{{ code }}">{{ code }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn-secondary" onclick="addIntermediate()">+ Add Stop</button>
+                    
+                    <div id="intermediatesList" class="intermediates-list" style="margin-top:10px;">
+                        <div class="empty-state">No intermediate stops added</div>
+                    </div>
+                </div>
+                
+                <div class="route-step">
+                    <div class="step-label">🏁 Select Destination</div>
+                    <select id="destinationAirport">
+                        <option value="">-- Choose Destination Airport --</option>
+                        {% for code in codes %}
+                        <option value="{{ code }}">{{ code }}</option>
+                        {% endfor %}
+                    </select>
+                    <div id="destName" class="airport-name"></div>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-primary" onclick="optimizeRoute()">🔍 Find Optimized Route</button>
+                <button class="btn-reset" onclick="resetAll()" style="flex: 0.5;">Reset</button>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Route Summary</div>
+                <div id="summary" class="info-box" style="display:none;">
+                    <div class="info-item">
+                        <span class="info-label">Total Distance:</span>
+                        <span class="info-value"><span id="totalDist">0</span> km</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Time:</span>
+                        <span class="info-value"><span id="totalTime">0</span> min</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Revenue:</span>
+                        <span class="info-value">₹<span id="totalRev">0</span></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Fuel Cost:</span>
+                        <span class="info-value">₹<span id="totalFuel">0</span></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Cost:</span>
+                        <span class="info-value">₹<span id="totalCost">0</span></span>
+                    </div>
+                    <div class="info-item" style="border-top: 1px solid #b0e0e6; margin-top: 8px; padding-top: 8px;">
+                        <span class="info-label" style="font-weight: 700;">Total Profit:</span>
+                        <span class="info-value" style="font-size: 16px;">₹<span id="totalProfit">0</span></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Segment Details</div>
+                <div class="loading" id="loading"><div class="spinner"></div> Optimizing...</div>
+                <div id="segmentsTable" style="display:none;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Dist</th>
+                                <th>Profit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="segmentRows"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            
+            <div class="charts-container" id="chartsContainer" style="display:none;">
+                <div class="chart-box">
+                    <div class="chart-title">Revenue by Segment</div>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">Fuel Consumption by Segment</div>
+                    <canvas id="fuelChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">Travel Time by Segment</div>
+                    <canvas id="timeChart"></canvas>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">Passenger Demand by Airport</div>
+                    <canvas id="demandChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([20, 78], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        const markers = {};
+        const airportData = {{ airport_data|tojson }};
+        const airportMap = {};
+        
+        let routePolyline = null;
+        let routeMarkers = [];
+        let intermediates = [];
+        let chartInstances = {};
+        
+        // Build airport map for quick lookup
+        airportData.forEach(airport => {
+            airportMap[airport.iata_code] = airport;
+            const marker = L.circleMarker([airport.latitude_deg, airport.longitude_deg], {
+                radius: 5,
+                fillColor: '#0066cc',
+                color: '#fff',
+                weight: 2,
+                opacity: 0.7,
+                fillOpacity: 0.6
+            }).addTo(map);
+            
+            marker.bindPopup(`<strong>${airport.name}</strong><br>(${airport.iata_code})`);
+            markers[airport.iata_code] = marker;
+        });
+        
+        // Update airport name display
+        document.getElementById('sourceAirport').addEventListener('change', function() {
+            if (this.value && airportMap[this.value]) {
+                document.getElementById('sourceName').textContent = airportMap[this.value].name;
+            } else {
+                document.getElementById('sourceName').textContent = '';
+            }
+        });
+        
+        document.getElementById('destinationAirport').addEventListener('change', function() {
+            if (this.value && airportMap[this.value]) {
+                document.getElementById('destName').textContent = airportMap[this.value].name;
+            } else {
+                document.getElementById('destName').textContent = '';
+            }
+        });
+        
+        // Add intermediate airport
+        function addIntermediate() {
+            const value = document.getElementById('intermediateAirport').value;
+            const source = document.getElementById('sourceAirport').value;
+            const dest = document.getElementById('destinationAirport').value;
+            
+            if (!value) {
+                showError('Select an airport');
+                return;
+            }
+            
+            if (value === source || value === dest) {
+                showError('Intermediate cannot be same as source or destination');
+                return;
+            }
+            
+            if (intermediates.includes(value)) {
+                showError('This airport is already added');
+                return;
+            }
+            
+            intermediates.push(value);
+            renderIntermediates();
+            document.getElementById('intermediateAirport').value = '';
+        }
+        
+        // Remove intermediate airport
+        function removeIntermediate(airport) {
+            intermediates = intermediates.filter(a => a !== airport);
+            renderIntermediates();
+        }
+        
+        // Render intermediates list
+        function renderIntermediates() {
+            const list = document.getElementById('intermediatesList');
+            
+            if (intermediates.length === 0) {
+                list.innerHTML = '<div class="empty-state">No intermediate stops added</div>';
+                return;
+            }
+            
+            list.innerHTML = intermediates.map(airport => `
+                <div class="intermediate-item">
+                    <div>
+                        <strong>${airport}</strong><br>
+                        <span style="font-size:11px;color:#666;">${airportMap[airport] ? airportMap[airport].name : ''}</span>
+                    </div>
+                    <button class="remove-btn" onclick="removeIntermediate('${airport}')">Remove</button>
+                </div>
+            `).join('');
+        }
+        
+        // Destroy existing charts
+        function destroyCharts() {
+            Object.values(chartInstances).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            chartInstances = {};
+        }
+        
+        // Create charts
+        function createCharts(chartsData) {
+            destroyCharts();
+            
+            // Revenue Chart
+            const revenueCtx = document.getElementById('revenueChart');
+            chartInstances.revenue = new Chart(revenueCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(chartsData.revenue_by_segment),
+                    datasets: [{
+                        data: Object.values(chartsData.revenue_by_segment),
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
+                }
+            });
+            
+            // Fuel Chart
+            const fuelCtx = document.getElementById('fuelChart');
+            chartInstances.fuel = new Chart(fuelCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(chartsData.fuel_by_segment),
+                    datasets: [{
+                        data: Object.values(chartsData.fuel_by_segment),
+                        backgroundColor: ['#FF8A65', '#AB47BC', '#42A5F5', '#EF5350', '#FFA726'],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }
+                }
+            });
+            
+            // Time Chart
+            const timeCtx = document.getElementById('timeChart');
+            chartInstances.time = new Chart(timeCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(chartsData.time_by_segment),
+                    datasets: [{
+                        label: 'Travel Time (min)',
+                        data: Object.values(chartsData.time_by_segment),
+                        backgroundColor: '#26C6DA',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true } }
+                }
+            });
+            
+            // Demand Chart
+            const demandCtx = document.getElementById('demandChart');
+            chartInstances.demand = new Chart(demandCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(chartsData.demand_by_airport),
+                    datasets: [{
+                        label: 'Passengers',
+                        data: Object.values(chartsData.demand_by_airport),
+                        backgroundColor: '#66BB6A',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+        
+        // Optimize route
+        async function optimizeRoute() {
+            const source = document.getElementById('sourceAirport').value;
+            const destination = document.getElementById('destinationAirport').value;
+            
+            if (!source) {
+                showError('Select source airport');
+                return;
+            }
+            
+            if (!destination) {
+                showError('Select destination airport');
+                return;
+            }
+            
+            if (source === destination) {
+                showError('Source and destination must be different');
+                return;
+            }
+            
+            const route = [source, ...intermediates, destination];
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('segmentsTable').style.display = 'none';
+            document.getElementById('chartsContainer').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/optimize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        airports: route,
+                        optimization: document.getElementById('optimization').value
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResults(data);
+                    drawRoute(data.route);
+                    createCharts(data.charts);
+                    document.getElementById('chartsContainer').style.display = 'grid';
+                } else {
+                    showError(data.error || 'Optimization failed');
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        // Display results
+        function displayResults(data) {
+            document.getElementById('summary').style.display = 'block';
+            document.getElementById('totalDist').textContent = data.totals.distance.toLocaleString();
+            document.getElementById('totalTime').textContent = Math.round(data.totals.time);
+            document.getElementById('totalRev').textContent = data.totals.revenue.toLocaleString();
+            document.getElementById('totalFuel').textContent = data.totals.fuel.toLocaleString();
+            document.getElementById('totalCost').textContent = data.totals.cost.toLocaleString();
+            document.getElementById('totalProfit').textContent = data.totals.profit.toLocaleString();
+            
+            const tbody = document.getElementById('segmentRows');
+            tbody.innerHTML = '';
+            
+            data.segments.forEach(seg => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${seg.from}</td>
+                        <td>${seg.to}</td>
+                        <td>${seg.distance}</td>
+                        <td>₹${seg.profit.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('segmentsTable').style.display = 'block';
+        }
+        
+        // Draw route on map
+        function drawRoute(route) {
+            if (routePolyline) map.removeLayer(routePolyline);
+            routeMarkers.forEach(m => map.removeLayer(m));
+            routeMarkers = [];
+            
+            const coords = [];
+            route.forEach((code, idx) => {
+                const airport = airportMap[code];
+                if (airport) {
+                    coords.push([airport.latitude_deg, airport.longitude_deg]);
+                    
+                    let color = '#ff8800';
+                    if (idx === 0) color = '#00aa00';
+                    else if (idx === route.length - 1) color = '#aa0000';
+                    
+                    const marker = L.circleMarker([airport.latitude_deg, airport.longitude_deg], {
+                        radius: 8,
+                        fillColor: color,
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+                    
+                    marker.bindPopup(`${idx + 1}. ${code}<br><strong>${airport.name}</strong>`);
+                    routeMarkers.push(marker);
+                }
+            });
+            
+            routePolyline = L.polyline(coords, { color: '#0066cc', weight: 2, opacity: 0.7 }).addTo(map);
+            map.fitBounds(routePolyline.getBounds().pad(0.1));
+        }
+        
+        function resetAll() {
+            document.getElementById('sourceAirport').value = '';
+            document.getElementById('destinationAirport').value = '';
+            document.getElementById('intermediateAirport').value = '';
+            document.getElementById('sourceName').textContent = '';
+            document.getElementById('destName').textContent = '';
+            intermediates = [];
+            renderIntermediates();
+            document.getElementById('summary').style.display = 'none';
+            document.getElementById('segmentsTable').style.display = 'none';
+            document.getElementById('chartsContainer').style.display = 'none';
+            document.getElementById('errorMsg').style.display = 'none';
+            if (routePolyline) map.removeLayer(routePolyline);
+            routeMarkers.forEach(m => map.removeLayer(m));
+            routeMarkers = [];
+            destroyCharts();
+        }
+        
+        function showError(msg) {
+            const errorDiv = document.getElementById('errorMsg');
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
+        }
+    </script>
+</body>
+</html>
